@@ -1,9 +1,0 @@
-.git
-__pycache__/
-.pytest_cache/
-*.pyc
-*.zip
-.env
-.venv/
-tests/
-README.md
