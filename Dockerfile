@@ -14,7 +14,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app.py core.py ./
+COPY app.py core.py diagnostics.py ./
+COPY static/ ./static/
 
 # Some base images already include the proxy user. Reuse it if present.
 RUN if ! id -u proxy >/dev/null 2>&1; then \

@@ -71,3 +71,28 @@ Health check: `GET http://localhost:5000/health`.
 This is **not a patch** for the upstream repository: it replaces the cloned upstream app with a focused OpenAI-compatible bridge, and therefore does not preserve upstream commands, multi-key rotation, or persistent user storage. Only text messages are supported; file/image/audio content parts are not forwarded. An SSE connection can still be cut off by an upstream network issue, in which case the server sends an SSE error event and terminates. A complete Docker build and live Google API call could not be performed in the authoring environment; run a real deployment smoke test.
 
 Protect API keys: never commit them to the repository, and do not share public URLs that embed secrets in the query string. Anyone with their own valid Google API key can make requests to the public endpoint; if you need additional access controls, configure them before publishing the service broadly.
+
+## New in Website Edition
+
+Visiting the deployed Railway domain (`https://YOUR-APP.up.railway.app/`) now opens a responsive homepage with **copyable** links:
+
+- Full OpenAI-compatible completion endpoint: `https://YOUR-APP.up.railway.app/v1/chat/completions` (POST)
+- API base URL: `https://YOUR-APP.up.railway.app/v1`
+- Local health check: `https://YOUR-APP.up.railway.app/health`
+
+The homepage also includes a status indicator, setup instructions, and common error explanations. It **does not ask for or store API keys**. The indicator checks only this running proxy, not Google's upstream status or your API quota.
+
+**Keep the new `static/index.html` and `diagnostics.py` files in your repository.** The updated Dockerfile copies both into the image.
+
+### Improved error handling
+
+- Upstream `429` is reported as an actual `429` rate/quota issue; any short `Retry-After` value is forwarded in the response header and structured error JSON.
+- Retry up to one time by default for brief `502`, `503`, `504`, or network connection problems. Configure `GEMINI_MAX_RETRIES` to `0`, `1`, or `2`. For `429`, only retry when Google explicitly requests a delay of **2 seconds or less**. Longer or exhausted quotas are returned immediately.
+- If Gemini takes a while to produce streaming content, the proxy emits an SSE keepalive comment every 15 seconds. This helps maintain idle streaming connections, though it cannot fix upstream outages or force unsupported clients to keep waiting.
+- `GET /v1/chat/completions` shows an explanatory JSON response; to generate text, send a POST with a valid API key and Gemini model ID.
+
+A second URL under the same Railway host **is not a new Gemini quota**. If the homepage works but a request returns `429`, inspect your Gemini API rate limits, usage tier, model availability, and the structured error from your client. If your client reports a generic connection failure instead, compare it against Railway request/deploy logs. A passing Railway `/health` check does not guarantee the Gemini API call will work.
+
+Optional Railway healthcheck path: `/health`.
+
+Browser-based clients can make authenticated POST requests: the API routes allow CORS preflight for `Authorization`, `Content-Type`, and `X-API-Key` headers (without cookie-based authentication).
